@@ -1,0 +1,419 @@
+- hosts:
+  - all
+  collections:
+  - netapp.ontap
+  gather_facts: no
+  tasks:
+  - name: add public key
+    netapp.ontap.na_ontap_publickey:
+      state: present
+      account: admin
+      index: 0
+      public_key: "{{ lookup('file', '~/.ssh/id_rsa.pub')}}"
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
+  - name: create or modify DNS
+    netapp.ontap.na_ontap_dns:
+      state: present
+      vserver:  vs
+      domains: "example.test"
+      nameservers: 10.224.123.1
+      skip_validation: true
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
+  - name: licenses
+    na_ontap_license:
+      state: present
+      license_codes: "{{ licenses }}"
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
+  - name: activate nfs
+    na_ontap_nfs:
+      state: present
+      service_state: started
+      vserver: vs
+      nfsv3: enabled
+      windows:
+        map_unknown_uid_to_default_user: false # BUG need to be true once audit activated or unknown users won't be able to access the share anymore
+        default_user: tata
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
+  - name: Create ExportPolicyRule
+    netapp.ontap.na_ontap_export_policy_rule:
+      name: default
+      state: present
+      rule_index: 1
+      vserver: vs
+      client_match: 10.224.123.0/24
+      ro_rule: none
+      rw_rule: none
+      protocol: cifs,nfs3,nfs4
+      super_user_security: any
+      anonymous_user_id: "12348"
+      allow_suid: no
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
+  - name: Create cifs_server
+    netapp.ontap.na_ontap_cifs_server:
+      state: present
+      name: TEST1
+      vserver: vs
+      service_state: started
+      workgroup: WORKGROUP1
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      # use_rest: always. Currently not supported by REST
+      use_rest: never
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
+  - name: Create Volume
+    netapp.ontap.na_ontap_volume:
+      state: present
+      name: vol1
+      is_infinite: False
+      aggregate_name: aggr1
+      size: 40
+      size_unit: mb
+      vserver: vs
+      junction_path: /myvol
+      volume_security_style: ntfs
+      wait_for_completion: True
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+  
+  - name: Create network interface
+    netapp.ontap.na_ontap_interface:
+      state: present
+      interface_name: lif1.0
+      service_policy: default-data-files
+      admin_status: up
+      address: 10.224.123.7
+      netmask: 255.255.255.0
+      vserver: vs
+      home_node: test1-01
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
+  - name: Create service policy for S3
+    netapp.ontap.na_ontap_service_policy:
+      state: present
+      name: vss3
+      services:
+        - data_core
+        - data_s3_server
+      vserver: vs
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
+  - name: Create network interface for S3
+    netapp.ontap.na_ontap_interface:
+      state: present
+      interface_name: lif1.1
+      service_policy: vss3
+      admin_status: up
+      address: 10.224.123.8
+      netmask: 255.255.255.0
+      vserver: vs
+      home_node: test1-01
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
+  - name: cifs user
+    na_ontap_cifs_local_user:
+      state: present
+      vserver: vs
+      name: tata
+      user_password: "{{ netapp_password }}"
+      account_disabled: False
+      full_name: Tata
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
+  - name: create UNIX anonymous user
+    netapp.ontap.na_ontap_unix_user:
+      state: present
+      name: me
+      vserver: vs
+      group_id: 12349
+      id: 12348
+      full_name: myself
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
+  - name: create vagrant UNIX user needed for audit
+    netapp.ontap.na_ontap_unix_user:
+      state: present
+      name: vagrant
+      vserver: vs
+      group_id: 1000
+      id: 1000
+      full_name: vagrant
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
+  # nope
+  - name: Create S3 bucket mapped to myvol
+    netapp.ontap.na_ontap_s3_buckets:
+      state: present
+      name: myvol
+      vserver: vs
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      https: true
+      validate_certs: false
+      use_rest: always
+    delegate_to: localhost
+    when: no # need nas-path
+
+  - name: user for S3 bucket
+    na_ontap_s3_users:
+      state: present
+      name: user
+      vserver: vs
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      https: true
+      validate_certs: false
+      use_rest: always
+    delegate_to: localhost
+    register: res
+
+  - name: dump s3 creds
+    copy:
+      content: |
+        ACCESS_KEY={{res["access_key"] }}
+        SECRET_KEY={{res["secret_key"] }}
+      dest: "{{ playbook_dir }}/user.env"
+    delegate_to: localhost
+    when: res.changed
+
+  - name: name mapping
+    netapp.ontap.na_ontap_name_mappings:
+      direction: unix_win
+      index: 1
+      vserver: vs
+      pattern: me
+      replacement: "TEST1\\\\tata"
+      state: present
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
+  # nope
+  - name: name mapping
+    netapp.ontap.na_ontap_name_mappings:
+      direction: s3_win
+      index: 1
+      vserver: vs
+      pattern: user
+      replacement: "TEST1\\\\tata"
+      state: present
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+    when: no
+  - name: name mapping
+    netapp.ontap.na_ontap_name_mappings:
+      direction: s3_unix
+      index: 1
+      vserver: vs
+      pattern: user
+      replacement: "leuser"
+      state: present
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+    when: no # not supported by ansible https://github.com/ansible-collections/netapp.ontap/issues/153
+
+  - name: cifs share
+    netapp.ontap.na_ontap_cifs:
+      state: present
+      name: myshare
+      path: /myvol
+      vserver: vs
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
+  - name: install ssl cert
+    netapp.ontap.na_ontap_security_certificates:
+      name: test1cert
+      type: server
+      vserver: vs
+      common_name: test1
+      public_certificate: "{{ lookup('file', playbook_dir + '/example.crt') }}"
+      private_key: "{{ lookup('file', playbook_dir + '/example.key') }}"
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+      
+  - name: s3 service
+    na_ontap_s3_services:
+      state: present
+      name: s3.example.test
+      vserver: vs
+      enabled: true
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+      certificate_name: test1cert
+    delegate_to: localhost
+
+  - name: Create vserver audit configuration
+    netapp.ontap.na_ontap_vserver_audit:
+      state: present
+      vserver: vs
+      enabled: True
+      events:
+        file_operations: True
+      log_path: "/"
+      log:
+        format: xml
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
+  - name: Create and modify a S3 Group
+    netapp.ontap.na_ontap_s3_groups:
+      state: present
+      name: legroup
+      comment: group for devs
+      vserver: vs
+      users:
+        - name: user
+      policies:
+        - name: FullAccess
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      https: true
+      validate_certs: false
+      use_rest: always
+    delegate_to: localhost
+
+  # update some more files with the new S3 credentials
+  - name: configure s3cmd
+    lineinfile:
+      path: "~/.s3cfg"
+      regex: "^access_key =.*"
+      line: access_key = {{ res["access_key"] }}
+    delegate_to: localhost
+    when: res.changed
+  - name: configure s3cmd
+    lineinfile:
+      path: "~/.s3cfg"
+      regex: "^secret_key =.*"
+      line: secret_key = {{ res["secret_key"] }}
+    delegate_to: localhost
+    when: res.changed
+  - name: configure aws cli
+    lineinfile:
+      path: "~/.aws/credentials"
+      regex: "^aws_access_key_id =.*"
+      line: aws_access_key_id = {{ res["access_key"] }}
+    delegate_to: localhost
+    when: res.changed
+  - name: configure aws cli
+    lineinfile:
+      path: "~/.aws/credentials"
+      regex: "^aws_secret_access_key =.*"
+      line: aws_secret_access_key = {{ res["secret_key"] }}
+    delegate_to: localhost
+    when: res.changed

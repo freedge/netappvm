@@ -1,0 +1,13 @@
+*.qcow2
+*.vmdk
+user.env
+ansible_collections
+*.ova
+vsim*
+*.7z
+MANIFEST
+cluster_replicated_records
+myenv
+todel
+example.key
+example.crt
