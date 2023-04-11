@@ -16,6 +16,7 @@
       use_rest: always
       https: true
       validate_certs: false
+      comment: my own public key
     delegate_to: localhost
 
   - name: create or modify DNS
@@ -185,6 +186,7 @@
       use_rest: always
       https: true
       validate_certs: false
+      description: a user account to access CIFS that can be used as default in mappings
     delegate_to: localhost
 
   - name: create UNIX anonymous user
@@ -245,6 +247,7 @@
       https: true
       validate_certs: false
       use_rest: always
+      comment: a user to access our S3 bucket
     delegate_to: localhost
     register: res
 
@@ -319,6 +322,7 @@
       use_rest: always
       https: true
       validate_certs: false
+      comment: access our data through CIFS
     delegate_to: localhost
 
   - name: install ssl cert
@@ -343,6 +347,7 @@
       name: s3.example.test
       vserver: vs
       enabled: true
+      comment: Retrieve our data through S3
       hostname: "{{ netapp_hostname }}"
       username: "{{ netapp_username }}"
       password: "{{ netapp_password }}"
