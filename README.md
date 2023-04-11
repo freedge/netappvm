@@ -3,9 +3,15 @@ random notes to build a lab with Netapp Ontap
 we forget about krb and active directory, but can have NFS, CIFS, S3 working.
 - we will need a SSL cert for S3
 ```
-openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes \
-  -keyout example.key -out example.crt -subj "/CN=test1" \
-  -addext "subjectAltName=DNS:s3,DNS:s3.example.test,DNS:test1,DNS:test1.example.test"
+openssl req -x509 -days 3650 -newkey rsa:4096 -keyout ca_private_key.pem -out ca_cert.pem -nodes -subj "/CN=testca"
+
+openssl req -new -newkey rsa:4096 -sha256 -nodes \
+  -keyout example.key -out example.csr -subj "/CN=test1" \
+  -reqexts SAN \
+  -config <(cat /etc/ssl/openssl.cnf \
+        <(printf "\n[SAN]\nsubjectAltName=DNS:s3,DNS:s3.example.test,DNS:test1,DNS:test1.example.test")) 
+
+openssl x509 -extfile <(printf "subjectAltName=DNS:s3,DNS:s3.example.test,DNS:test1,DNS:test1.example.test") -req -in example.csr -days 365 -CA ca_cert.pem -CAkey ca_private_key.pem -CAcreateserial -out my_signed_cert.pem
 ```
 - also need a host_vars/nasim01a.yaml file with a ```licenses``` list and a ```netapp_password``` string
 
@@ -19,9 +25,7 @@ security login create -vserver test1 -user-or-group-name admin -application ssh 
 set -confirmations off
 disk assign -all -node test1-01
 # need to wait a bit after that one...
-aggr create -aggregate  aggr1 -node test1-01 -disksize 1 -diskcount 5
 aggr add-disks -aggregate aggr0_test1_01 -diskcount 3
-vserver create -aggregate aggr1 -vserver vs
 set -privilege advanced
 security login unlock -username diag
 security login password -username diag
@@ -50,7 +54,7 @@ vserver name-mapping create -position 1 -direction s3-win -vserver vs -pattern u
 ```
 
 ```
-curl --cacert example.crt --resolve s3.example.test:443:10.224.123.8 https://s3.example.test/
+curl --cacert ca_cert.pem --resolve s3.example.test:443:10.224.123.8 https://s3.example.test/
 ```
 
 presigned URL require signature V4 (https://community.netapp.com/t5/ONTAP-Discussions/S3-buckets-and-presigned-URLs/m-p/443294#M42029)

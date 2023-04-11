@@ -19,6 +19,78 @@
       comment: my own public key
     delegate_to: localhost
 
+  - name: install our own root ca
+    netapp.ontap.na_ontap_security_certificates:
+      name: webtestca
+      type: server_ca
+      common_name: testca
+      public_certificate: "{{ lookup('file', playbook_dir + '/ca_cert.pem') }}"
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
+  - name: install ssl cert, though I dont know how to use it TODO
+    netapp.ontap.na_ontap_security_certificates:
+      name: webcert
+      type: server
+      common_name: test1
+      public_certificate: "{{ lookup('file', playbook_dir + '/my_signed_cert.pem') }}"
+      private_key: "{{ lookup('file', playbook_dir + '/example.key') }}"
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
+  - name: Assign all unassigned disks to node1, although maybe we did this in the README
+    netapp.ontap.na_ontap_disks:
+      node: test1-01
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
+  - name: Create Aggregates and wait 5 minutes until aggregate is online
+    netapp.ontap.na_ontap_aggregate:
+      state: present
+      service_state: online
+      name: aggr1
+      nodes:
+      - test1-01
+      disk_count: 5
+      wait_for_online: True
+      time_out: 300
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
+  - name: create vserver
+    netapp.ontap.na_ontap_svm:
+      state: present
+      name: vs
+      aggr_list:
+      - aggr1
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
   - name: create or modify DNS
     netapp.ontap.na_ontap_dns:
       state: present
@@ -325,13 +397,27 @@
       comment: access our data through CIFS
     delegate_to: localhost
 
+  - netapp.ontap.na_ontap_security_certificates:
+      name: s3testca
+      type: server_ca
+      vserver: vs
+      common_name: testca
+      public_certificate: "{{ lookup('file', playbook_dir + '/ca_cert.pem') }}"
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
   - name: install ssl cert
     netapp.ontap.na_ontap_security_certificates:
-      name: test1cert
+      name: s3cert
       type: server
       vserver: vs
       common_name: test1
-      public_certificate: "{{ lookup('file', playbook_dir + '/example.crt') }}"
+      public_certificate: "{{ lookup('file', playbook_dir + '/my_signed_cert.pem') }}"
       private_key: "{{ lookup('file', playbook_dir + '/example.key') }}"
       hostname: "{{ netapp_hostname }}"
       username: "{{ netapp_username }}"
@@ -354,7 +440,7 @@
       use_rest: always
       https: true
       validate_certs: false
-      certificate_name: test1cert
+      certificate_name: s3cert
     delegate_to: localhost
 
   - name: Create vserver audit configuration

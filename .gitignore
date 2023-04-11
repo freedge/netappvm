@@ -11,3 +11,5 @@ myenv
 todel
 example.key
 example.crt
+*.pem
+*.csr

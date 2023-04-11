@@ -1,6 +1,7 @@
 setfacl -m u:libvirt-qemu:x .
 virsh destroy nasim01a
 virsh undefine nasim01a
+sha256sum vsim-netapp-DOT9.12.1-cm_nodar.ova  | grep f499dfdebb73d30683ebd61cd15f3fa3c0e02d0efe1db18260fdf61ba8057c54 || exit 9
 tar xvf vsim-netapp-DOT9.12.1-cm_nodar.ova
 rm -f vsim-NetAppDot-simulate-disk{1,2,3,4}.qcow2
 for i in {1..4}; do     qemu-img convert -f vmdk -O qcow2 vsim-NetAppDOT-simulate-disk${i}.vmdk vsim-NetAppDOT-simulate-disk${i}.qcow2; done
