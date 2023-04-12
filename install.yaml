@@ -515,3 +515,60 @@
       use_rest: always
     delegate_to: localhost
 
+  - name: Create network interface for S3 with IPv6 address
+    netapp.ontap.na_ontap_interface:
+      state: present
+      interface_name: lif1.2
+      service_policy: vss3
+      admin_status: up
+      address: fd00::e
+      netmask: 64
+      vserver: vs
+      home_node: test1-01
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
+  - name: Create network interface for NFS with IPv6 address
+    netapp.ontap.na_ontap_interface:
+      state: present
+      interface_name: lif1.3
+      service_policy: vsnas
+      admin_status: up
+      address: fd00::f
+      netmask: 64
+      vserver: vs
+      home_node: test1-01
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
+  - name: Create ExportPolicyRule for IPv6
+    netapp.ontap.na_ontap_export_policy_rule:
+      name: default
+      state: present
+      rule_index: 2
+      vserver: vs
+      client_match: fd00::/56
+      ro_rule: none
+      rw_rule: none
+      protocol: nfs3,nfs4
+      super_user_security: any
+      anonymous_user_id: "12348"
+      allow_suid: no
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
