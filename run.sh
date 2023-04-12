@@ -2,8 +2,10 @@ setfacl -m u:libvirt-qemu:x .
 virsh destroy nasim01a
 virsh undefine nasim01a
 sha256sum vsim-netapp-DOT9.12.1-cm_nodar.ova  | grep f499dfdebb73d30683ebd61cd15f3fa3c0e02d0efe1db18260fdf61ba8057c54 || exit 9
+#sha256sum vsim-netapp-DOT9.11.1-cm_nodar.ova  | grep 55f07abf40493364f61bf89458c001efb7f52a44024d7ffd4719280367d92907 || exit 9
+#md5sum vsim-netapp-DOT9.7-cm_nodar.ova | grep 083ba688315f4c6c802a769c121a7164 || exit 9
+rm -f vsim-NetApp???-simulate-disk{1,2,3,4}.qcow2
 tar xvf vsim-netapp-DOT9.12.1-cm_nodar.ova
-rm -f vsim-NetAppDot-simulate-disk{1,2,3,4}.qcow2
 for i in {1..4}; do     qemu-img convert -f vmdk -O qcow2 vsim-NetAppDOT-simulate-disk${i}.vmdk vsim-NetAppDOT-simulate-disk${i}.qcow2; done
 
 virt-install --name nasim01a --memory 12288 --vcpus 2 --os-variant freebsd11.2 \

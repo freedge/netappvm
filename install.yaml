@@ -4,10 +4,27 @@
   - netapp.ontap
   gather_facts: no
   tasks:
+  
+  - name: Create a second admin user and define a pubkey
+    netapp.ontap.na_ontap_user:
+      state: present
+      name: admin2
+      role_name: admin
+      application_dicts:
+      - application: ssh
+        authentication_methods: publickey
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
   - name: add public key
     netapp.ontap.na_ontap_publickey:
       state: present
-      account: admin
+      account: admin2
       index: 0
       public_key: "{{ lookup('file', '~/.ssh/id_rsa.pub')}}"
       hostname: "{{ netapp_hostname }}"
@@ -33,7 +50,7 @@
       validate_certs: false
     delegate_to: localhost
 
-  - name: install ssl cert, though I dont know how to use it TODO
+  - name: install ssl cert, though I dont know how to use it TODO unusable in simulator
     netapp.ontap.na_ontap_security_certificates:
       name: webcert
       type: server
@@ -192,11 +209,29 @@
       validate_certs: false
     delegate_to: localhost
   
+  - name: Create service policy for NFS+CIFS, as once CIFS was not in the list
+    netapp.ontap.na_ontap_service_policy:
+      state: present
+      name: vsnas
+      services:
+        - data_core
+        - data_s3_server
+        - data_nfs
+        - data_cifs
+      vserver: vs
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
   - name: Create network interface
     netapp.ontap.na_ontap_interface:
       state: present
       interface_name: lif1.0
-      service_policy: default-data-files
+      service_policy: vsnas
       admin_status: up
       address: 10.224.123.7
       netmask: 255.255.255.0
@@ -326,8 +361,8 @@
   - name: dump s3 creds
     copy:
       content: |
-        ACCESS_KEY={{res["access_key"] }}
-        SECRET_KEY={{res["secret_key"] }}
+        export AWS_ACCESS_KEY_ID={{res["access_key"] }}
+        export AWS_SECRET_ACCESS_KEY={{res["secret_key"] }}
       dest: "{{ playbook_dir }}/user.env"
     delegate_to: localhost
     when: res.changed
@@ -460,6 +495,7 @@
       https: true
       validate_certs: false
     delegate_to: localhost
+    when: no # need some extra disk space, see README
 
   - name: Create and modify a S3 Group
     netapp.ontap.na_ontap_s3_groups:
@@ -479,32 +515,3 @@
       use_rest: always
     delegate_to: localhost
 
-  # update some more files with the new S3 credentials
-  - name: configure s3cmd
-    lineinfile:
-      path: "~/.s3cfg"
-      regex: "^access_key =.*"
-      line: access_key = {{ res["access_key"] }}
-    delegate_to: localhost
-    when: res.changed
-  - name: configure s3cmd
-    lineinfile:
-      path: "~/.s3cfg"
-      regex: "^secret_key =.*"
-      line: secret_key = {{ res["secret_key"] }}
-    delegate_to: localhost
-    when: res.changed
-  - name: configure aws cli
-    lineinfile:
-      path: "~/.aws/credentials"
-      regex: "^aws_access_key_id =.*"
-      line: aws_access_key_id = {{ res["access_key"] }}
-    delegate_to: localhost
-    when: res.changed
-  - name: configure aws cli
-    lineinfile:
-      path: "~/.aws/credentials"
-      regex: "^aws_secret_access_key =.*"
-      line: aws_secret_access_key = {{ res["secret_key"] }}
-    delegate_to: localhost
-    when: res.changed

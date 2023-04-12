@@ -19,27 +19,20 @@ openssl x509 -extfile <(printf "subjectAltName=DNS:s3,DNS:s3.example.test,DNS:te
 - connect to the web server... choose single node
 - wait some time, validate and wait some more time...
 
-- log on SSH and run that
-```
-security login create -vserver test1 -user-or-group-name admin -application ssh -authentication-method publickey -role admin
-set -confirmations off
-disk assign -all -node test1-01
-# need to wait a bit after that one...
-aggr add-disks -aggregate aggr0_test1_01 -diskcount 3
-set -privilege advanced
-security login unlock -username diag
-security login password -username diag
-```
 
 - build an a venv with the needed modules and collections, install with
 ```
 ansible-playbook  install.yaml  -e ansible_python_interpreter=`pwd`/myenv/bin/python
 ```
 
-
-- NFS mount with
+- to activate Auditing, the root aggregate needs more disks
 ```
-mount 10.224.123.7:/myvol /mnt/nfs3/ -t nfs -o sec=sys,nfsvers=3,noac,noexec
+aggr add-disks -aggregate aggr0_test1_01 -diskcount 3
+```
+
+- NFS mount for example with
+```
+mount 10.224.123.7:/myvol /mnt/nfs/ -t nfs -o sec=sys,nfsvers=3,noac,noexec,nodev,nosuid
 ```
 
 - CIFS mount on smb://10.224.123.7/myshare with user TEST1\tata, domain workgroup1
@@ -58,6 +51,8 @@ curl --cacert ca_cert.pem --resolve s3.example.test:443:10.224.123.8 https://s3.
 ```
 
 presigned URL require signature V4 (https://community.netapp.com/t5/ONTAP-Discussions/S3-buckets-and-presigned-URLs/m-p/443294#M42029)
+ETAG do not match the file MD5 and If-Modified-Since is not supported. Connection will be resetted if file content changes.
+Symlink or path to .snapshot are supported.
 
 
 
@@ -69,11 +64,22 @@ after booting up the VM following a hard shutdown:
 ```
 system configuration recovery node mroot-state clear -recovery-state  all
 ```
-and reboot.
+and reboot from the hypervisor.
+
+After VM pause, NTP synchro need to be forced:
+```
+set -privilege diagnostic
+cluster date show
+cluster time-service ntp status show
+cluster time-service ntp server delete -server 192.168.1.254
+cluster time-service ntp server create -server 192.168.1.254 -is-preferred true
+```
 
 
 ```
 network interface show
+security login unlock -username diag
+security login password -username diag
 set -privilege diagnostic
 
 # getting some more logs
