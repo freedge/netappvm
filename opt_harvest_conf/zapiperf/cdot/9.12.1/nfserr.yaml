@@ -1,0 +1,46 @@
+
+name:                     NFSERR
+query:                    nfserr
+object:                   nfserr
+
+instance_key: uuid
+counters:
+  - instance_uuid => uuid
+  - access_error
+  - bad_qtree_fh
+  - badcookie_error
+  - badhandle_error
+  - badtype_error
+  - dquot_error
+  - exist_error
+  - fbig_error
+  - idem_jukebox_on_csm_error
+  - inval_error
+  - io_error
+  - isdir_error
+  - jukebox_error
+  - mlink_error
+  - nametoolong_error
+  - nfs_flexcache_ejukebox_on_enospc
+  - nodev_error
+  - noent_error
+  - nospc_error
+  - notdir_error
+  - notempty_error
+  - notsup_error
+  - notsync_error
+  - nxio_error
+  - perm_error
+  - process_name
+  - rc_checksum_mismatch_drops
+  - remote_error
+  - rofs_error
+  - serverfault_error
+  - stale_error
+  - toosmall_error
+  - v3_conn_resets
+  - v3_dup_xid_drops
+  - v3_no_replay_bucket_drops
+  - wflush_error
+  - xdev_error
+
