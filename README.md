@@ -1,6 +1,6 @@
 random notes to build a lab with Netapp Ontap
 
-we forget about krb and active directory, but can have NFS, CIFS, S3 working.
+we forget about active directory, but can have NFS, CIFS, S3 working.
 - we will need a SSL cert for S3
 ```
 openssl req -x509 -days 3650 -newkey rsa:4096 -keyout ca_private_key.pem -out ca_cert.pem -nodes -subj "/CN=testca"
@@ -101,3 +101,45 @@ sudo fstat mgwd.log # lsof equivalent
 kldstat # lsmod
 
 ```
+
+# kerberos stuff
+
+need a kerberos server:
+```
+podman run --rm --name krb5-server -e KRB5_REALM=EXAMPLE.TEST -e KRB5_KDC=localhost -e KRB5_PASS=mypass -p 10088:88 -p 10464:464 -p 10749:749 gcavalcante8808/krb5-server
+```
+
+we add some principals:
+```
+KRB5_CONFIG=krb5.conf kinit admin/admin@EXAMPLE.TEST
+KRB5_CONFIG=krb5.conf kadmin
+add_principal host/raw.example.test@EXAMPLE.TEST
+add_principal host/gw.example.test@EXAMPLE.TEST
+add_principal host/nfs.example.test@EXAMPLE.TEST
+add_principal nfs/nfs.example.test@EXAMPLE.TEST
+add_principal vagrant@EXAMPLE.TEST
+add_principal nfs/service@EXAMPLE.TEST
+
+ktadd -k raw.keytab host/raw.example.test@EXAMPLE.TEST
+ktadd -k gw.keytab host/gw.example.test@EXAMPLE.TEST
+```
+
+we configure Ontap for Kerberos
+```
+ansible-playbook  krb5.yaml  -e ansible_python_interpreter=`pwd`/myenv/bin/python
+```
+
+TODO: doable with Ansible?
+
+```
+vserver nfs kerberos interface modify -vserver vs -lif lif1.0 -kerberos enabled -spn nfs/nfs.example.test@EXAMPLE.TEST -admin-username nfs/service
+```
+
+TODO: configure custom location for these files and try on Ubuntu
+
+On the server we prepare a /etc/krb5.conf and /etc/krb5.keytab, then
+mount with
+```
+mount 10.224.123.7:/myvol /mnt/nfs/ -t nfs -o sec=krb5p,nfsvers=4.2,noac,noexec,nodev,nosuid -vv
+```
+

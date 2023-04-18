@@ -13,3 +13,4 @@ example.key
 example.crt
 *.pem
 *.csr
+*.keytab

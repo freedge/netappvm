@@ -1,0 +1,63 @@
+- hosts:
+  - all
+  collections:
+  - netapp.ontap
+  gather_facts: no
+  tasks:
+  
+  - name: Use krb5 in export policy
+    netapp.ontap.na_ontap_export_policy_rule:
+      name: default
+      state: present
+      rule_index: 1
+      vserver: vs
+      client_match: 10.224.123.0/24
+      ro_rule: krb5p
+      rw_rule: krb5p
+      protocol: nfs4
+      super_user_security: krb5p
+      anonymous_user_id: "12348"
+      allow_suid: no
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
+  - name: Create kerberos realm other kdc vendor
+    netapp.ontap.na_ontap_kerberos_realm:
+      state: present
+      realm: 'EXAMPLE.TEST'
+      vserver: 'vs'
+      kdc_ip: '10.224.123.1'
+      kdc_port: 10088
+      pw_server_port: 10464
+      admin_server_port: 10749
+      kdc_vendor: 'other'
+      comment: our kerberos realm
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      # use_rest: always # TODO : not supported by REST API
+      use_rest: never
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
+  - name: create host UNIX user needed to identify hosts
+    netapp.ontap.na_ontap_unix_user:
+      state: present
+      name: host
+      vserver: vs
+      group_id: 888
+      id: 888
+      full_name: host
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost

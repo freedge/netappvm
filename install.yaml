@@ -108,21 +108,6 @@
       validate_certs: false
     delegate_to: localhost
 
-  - name: create or modify DNS
-    netapp.ontap.na_ontap_dns:
-      state: present
-      vserver:  vs
-      domains: "example.test"
-      nameservers: 10.224.123.1
-      skip_validation: true
-      hostname: "{{ netapp_hostname }}"
-      username: "{{ netapp_username }}"
-      password: "{{ netapp_password }}"
-      use_rest: always
-      https: true
-      validate_certs: false
-    delegate_to: localhost
-
   - name: licenses
     na_ontap_license:
       state: present
@@ -215,9 +200,10 @@
       name: vsnas
       services:
         - data_core
-        - data_s3_server
         - data_nfs
         - data_cifs
+        - management_dns_client # needed so that the vserver DNS can be configured
+        - management_ad_client # needed maybe so that krb server can be called
       vserver: vs
       hostname: "{{ netapp_hostname }}"
       username: "{{ netapp_username }}"
@@ -564,6 +550,20 @@
       super_user_security: any
       anonymous_user_id: "12348"
       allow_suid: no
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
+  - name: create or modify DNS
+    netapp.ontap.na_ontap_dns:
+      state: present
+      vserver:  vs
+      domains: "example.test"
+      nameservers: 10.224.123.1
       hostname: "{{ netapp_hostname }}"
       username: "{{ netapp_username }}"
       password: "{{ netapp_password }}"
