@@ -129,17 +129,18 @@ we configure Ontap for Kerberos
 ansible-playbook  krb5.yaml  -e ansible_python_interpreter=`pwd`/myenv/bin/python
 ```
 
-TODO: doable with Ansible?
+TODO: following line doable with Ansible?
 
 ```
 vserver nfs kerberos interface modify -vserver vs -lif lif1.0 -kerberos enabled -spn nfs/nfs.example.test@EXAMPLE.TEST -admin-username nfs/service
 ```
 
-TODO: configure custom location for these files and try on Ubuntu
+On the server we prepare the needed config, then mount:
+```
+ansible-playbook nfsclient.yaml
+mount nfs.example.test:/myvol /mnt/nfs/ -t nfs -o noexec,nodev,nosuid -vv
+```
 
-On the server we prepare a /etc/krb5.conf and /etc/krb5.keytab, then
-mount with
-```
-mount 10.224.123.7:/myvol /mnt/nfs/ -t nfs -o sec=krb5p,nfsvers=4.2,noac,noexec,nodev,nosuid -vv
-```
+
+
 

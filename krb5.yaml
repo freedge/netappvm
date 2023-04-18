@@ -1,5 +1,5 @@
 - hosts:
-  - all
+  - ontap
   collections:
   - netapp.ontap
   gather_facts: no

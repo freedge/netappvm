@@ -1,0 +1,56 @@
+- hosts: linux
+  gather_facts: no
+  become: yes
+  vars:
+    keytab_file: raw.keytab
+  tasks:
+  - name: ensure directories for drop-in exist
+    file:
+      state: directory
+      path: /etc/{{ item }}
+    loop:
+    - krb5.conf.d
+    - nfs.conf.d
+    - nfsmount.conf.d
+  - name: krb config
+    copy:
+      content: |
+        [realms]
+        EXAMPLE.TEST = {
+            kdc = 10.224.123.1:10088
+            admin_server = 10.224.123.1:10749
+        }
+
+        [domain_realm]
+        .example.test = EXAMPLE.TEST
+        example.test = EXAMPLE.TEST
+      dest: /etc/krb5.conf.d/ontap.conf
+  - name: krb keytab
+    copy:
+      src: "{{ playbook_dir }}/{{ keytab_file }}"
+      dest: /etc/host.keytab
+      mode: '0400'
+      owner: root
+  - name: fake keytab for processes to start
+    file:
+      state: touch
+      path: /etc/krb5.keytab
+      mode: u=r
+      owner: root
+  - name: nfs client config
+    copy:
+      content: |
+        [gssd]
+        keytab-file=/etc/host.keytab
+        preferred-realm=EXAMPLE.TEST
+        use-machine-creds=0
+      dest: /etc/nfs.conf.d/ontap.conf
+  - name: nfs mount
+    copy:
+      content: |
+        [ Server "nfs.example.test" ]
+        Sec=krb5p
+        Nfsvers=4.2
+        Ac=false
+      dest: /etc/nfsmount.conf.d/ontap.conf
+  

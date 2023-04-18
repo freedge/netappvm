@@ -1,2 +1,5 @@
-[all]
+[ontap]
 nasim01a netapp_hostname=10.224.123.6 netapp_username=admin ansible_host=10.224.123.6 ansible_user=admin
+
+[linux]
+raw_raw ansible_user=vagrant

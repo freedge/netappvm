@@ -1,5 +1,5 @@
 - hosts:
-  - all
+  - ontap
   collections:
   - netapp.ontap
   gather_facts: no
@@ -168,7 +168,7 @@
       hostname: "{{ netapp_hostname }}"
       username: "{{ netapp_username }}"
       password: "{{ netapp_password }}"
-      # use_rest: always. Currently not supported by REST
+      # use_rest: always. TODO Currently not supported by REST
       use_rest: never
       https: true
       validate_certs: false
