@@ -35,7 +35,7 @@
     file:
       state: touch
       path: /etc/krb5.keytab
-      mode: u=r
+      mode: '0400'
       owner: root
   - name: nfs client config
     copy:

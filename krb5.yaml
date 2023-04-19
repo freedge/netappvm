@@ -11,7 +11,7 @@
       state: present
       rule_index: 1
       vserver: vs
-      client_match: 10.224.123.0/24
+      client_match: ".EXAMPLE.TEST"
       ro_rule: krb5p
       rw_rule: krb5p
       protocol: nfs4

@@ -13,6 +13,23 @@ openssl req -new -newkey rsa:4096 -sha256 -nodes \
 
 openssl x509 -extfile <(printf "subjectAltName=DNS:s3,DNS:s3.example.test,DNS:test1,DNS:test1.example.test") -req -in example.csr -days 365 -CA ca_cert.pem -CAkey ca_private_key.pem -CAcreateserial -out my_signed_cert.pem
 ```
+
+with TPM: key needs to be shorter
+```
+sudo apt-get install tpm2-openssl
+
+openssl req -provider tpm2 -provider default -x509 -days 3650 -newkey rsa:2048 -keyout ca_private_key.pem -out ca_cert.pem -nodes -subj "/CN=testca"
+
+openssl req -new -newkey rsa:2048 -sha256 -nodes \
+  -keyout example.key -out example.csr -subj "/CN=test1" \
+  -reqexts SAN \
+  -config <(cat /etc/ssl/openssl.cnf \
+        <(printf "\n[SAN]\nsubjectAltName=DNS:s3,DNS:s3.example.test,DNS:test1,DNS:test1.example.test")) 
+
+openssl x509 -extfile <(printf "subjectAltName=DNS:s3,DNS:s3.example.test,DNS:test1,DNS:test1.example.test") -req -in example.csr -days 365 -CA ca_cert.pem -CAkey ca_private_key.pem -CAcreateserial -out my_signed_cert.pem
+
+```
+
 - also need a host_vars/nasim01a.yaml file with a ```licenses``` list and a ```netapp_password``` string
 
 - boot VM with run.sh
@@ -100,6 +117,9 @@ sockstat
 sudo fstat mgwd.log # lsof equivalent
 kldstat # lsmod
 
+
+sqlite3 -json /mroot/etc/cluster_config/rdb/Management/_sql/rdb.db "select * from nfs_Servers;"
+
 ```
 
 # kerberos stuff
@@ -111,17 +131,15 @@ podman run --rm --name krb5-server -e KRB5_REALM=EXAMPLE.TEST -e KRB5_KDC=localh
 
 we add some principals:
 ```
-KRB5_CONFIG=krb5.conf kinit admin/admin@EXAMPLE.TEST
-KRB5_CONFIG=krb5.conf kadmin
-add_principal host/raw.example.test@EXAMPLE.TEST
-add_principal host/gw.example.test@EXAMPLE.TEST
-add_principal host/nfs.example.test@EXAMPLE.TEST
-add_principal nfs/nfs.example.test@EXAMPLE.TEST
-add_principal vagrant@EXAMPLE.TEST
-add_principal nfs/service@EXAMPLE.TEST
-
-ktadd -k raw.keytab host/raw.example.test@EXAMPLE.TEST
-ktadd -k gw.keytab host/gw.example.test@EXAMPLE.TEST
+alias ka="KRB5_CONFIG=krb5.conf kadmin -w mypass"
+ka add_principal -pw mypass host/raw.example.test@EXAMPLE.TEST
+ka add_principal -pw mypass host/gw.example.test@EXAMPLE.TEST
+ka add_principal -pw mypass host/nfs.example.test@EXAMPLE.TEST
+ka add_principal -pw mypass nfs/nfs.example.test@EXAMPLE.TEST
+ka add_principal -pw mypass vagrant@EXAMPLE.TEST
+ka add_principal -pw mypass nfs/service@EXAMPLE.TEST
+ka ktadd -k raw.keytab host/raw.example.test@EXAMPLE.TEST
+ka ktadd -k gw.keytab host/raw.example.test@EXAMPLE.TEST
 ```
 
 we configure Ontap for Kerberos
@@ -141,6 +159,15 @@ ansible-playbook nfsclient.yaml
 mount nfs.example.test:/myvol /mnt/nfs/ -t nfs -o noexec,nodev,nosuid -vv
 ```
 
+more:
+```
+diag nblade nfs kerberos-context-cache show
+```
 
+# links
+
+[kerberos](https://www.netapp.com/media/19384-tr-4616.pdf)
+
+[REST API](https://docs.netapp.com/us-en/ontap-automation/reference/api_reference.html#access-a-copy-of-the-ontap-rest-api-reference-documentation)
 
 
