@@ -131,7 +131,7 @@ podman run --rm --name krb5-server -e KRB5_REALM=EXAMPLE.TEST -e KRB5_KDC=localh
 
 we add some principals:
 ```
-rm -f raw.keytab gw.keytab
+rm -f raw.keytab gw.keytab vagrant.keytab
 alias ka="KRB5_CONFIG=krb5.conf kadmin -w mypass -p admin/admin@EXAMPLE.TEST"
 ka add_principal -pw mypass host/raw.example.test@EXAMPLE.TEST
 ka add_principal -pw mypass host/gw.example.test@EXAMPLE.TEST
@@ -141,6 +141,7 @@ ka add_principal -pw mypass vagrant@EXAMPLE.TEST
 ka add_principal -pw mypass nfs/service@EXAMPLE.TEST
 ka ktadd -k raw.keytab host/raw.example.test@EXAMPLE.TEST
 ka ktadd -k gw.keytab host/gw.example.test@EXAMPLE.TEST
+ka ktadd -k vagrant.keytab vagrant@EXAMPLE.TEST
 ```
 
 we configure Ontap for Kerberos
@@ -157,7 +158,7 @@ vserver nfs kerberos interface modify -vserver vs -lif lif1.0 -kerberos enabled 
 On the server we prepare the needed config, then mount:
 ```
 ansible-playbook nfsclient.yaml
-mount nfs.example.test:/myvol /mnt/nfs/ -t nfs -o noexec,nodev,nosuid -vv
+mount nfs.example.test:/myvol /mnt/nfs/ -t nfs -o noexec,nodev,nosuid
 ```
 
 more:
@@ -165,9 +166,17 @@ more:
 diag nblade nfs kerberos-context-cache show
 ```
 
+Connecting and forwarding the kerberos ticket
+```
+KRB5_CONFIG=krb5.conf kinit -k -t ./vagrant.keytab  vagrant@EXAMPLE.TEST
+KRB5_CONFIG=krb5.conf ssh -K -o PreferredAuthentications=gssapi-with-mic vagrant@raw.example.test
+```
+
+We use [gssproxy](https://github.com/gssapi/gssproxy/blob/main/docs/NFS.md)
+
 # NFSv4 and ids
 
-Not explored
+Not really explored
 
 ```
 test1::> vserver nfs modify -vserver vs -v4-numeric-ids disabled
@@ -302,6 +311,39 @@ reclaimPolicy: Retain
 +------------------------------------------+--------+---------------+----------+--------------------------------------+--------+---------+
 ```
 
+to use krb5p, we need to add config for krb5.conf and nfs.conf, add the keytab on the host.
+
+TODO: some kind of machine config or controller for that?
+```
+sudo podman cp /etc/krb5.keytab ovn-worker:/etc/krb5.keytab
+sudo podman exec -ti ovn-worker mkdir /etc/krb5.conf.d/
+sudo podman cp /etc/krb5.conf.d/ontap.conf ovn-worker:/etc/krb5.conf.d/ontap.conf
+sudo podman cp /etc/krb5.conf ovn-worker:/etc/krb5.conf
+sudo podman cp /etc/nfs.conf.d/ontap.conf ovn-worker:/etc/nfs.conf.d/ontap.conf
+
+apt-get update
+apt-get install gssproxy
+
+sudo podman cp /etc/gssproxy/99-network-fs-clients.conf ovn-worker:/etc/gssproxy/99-network-fs-clients.conf
+sudo podman cp /var/lib/gssproxy/clients/1000.keytab ovn-worker:/var/lib/gssproxy/clients/100000.keytab
+```
+
+
+```
+spec:
+  securityContext:
+    runAsUser: 100000
+    runAsGroup: 100000
+    supplementalGroups: [5555]
+  volumes:
+    - name: task-pv-storage
+      persistentVolumeClaim:
+        claimName: basic
+```
+we use keytab for uid=1000, run as user 100000, and files appear owned by 1000
+which is great and weird.
+
+```chgrp``` works assuming the group name is defined on both client and server side.
 
 # links
 

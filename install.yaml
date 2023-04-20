@@ -317,6 +317,38 @@
       validate_certs: false
     delegate_to: localhost
 
+  - name: create vagrant UNIX group to not read anon
+    netapp.ontap.na_ontap_unix_group:
+      state: present
+      name: vagrant
+      vserver: vs
+      id: 1000
+      users:
+      - vagrant
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
+  - name: create a supplemental UNIX group for that user
+    netapp.ontap.na_ontap_unix_group:
+      state: present
+      name: vagrant
+      vserver: vs
+      id: 5555
+      users:
+      - vagrant
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
   # nope
   - name: Create S3 bucket mapped to myvol
     netapp.ontap.na_ontap_s3_buckets:

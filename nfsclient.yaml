@@ -24,27 +24,38 @@
         [domain_realm]
         .example.test = EXAMPLE.TEST
         example.test = EXAMPLE.TEST
+
+        [libdefaults]
+        # I could not find a way to remove that reliably
+        default_realm = EXAMPLE.TEST
       dest: /etc/krb5.conf.d/ontap.conf
   - name: krb keytab
     copy:
       src: "{{ playbook_dir }}/{{ keytab_file }}"
-      dest: /etc/host.keytab
+      dest: /etc/krb5.keytab
       mode: '0400'
       owner: root
-  - name: fake keytab for processes to start
-    file:
-      state: touch
-      path: /etc/krb5.keytab
+  - name: krb keytab
+    copy:
+      src: "{{ playbook_dir }}/vagrant.keytab"
+      dest:  /var/lib/gssproxy/clients/1000.keytab
       mode: '0400'
       owner: root
   - name: nfs client config
     copy:
       content: |
         [gssd]
-        keytab-file=/etc/host.keytab
-        preferred-realm=EXAMPLE.TEST
+        use-gss-proxy=1
         use-machine-creds=0
+        verbosity=4
+        rpc-verbosity=4
       dest: /etc/nfs.conf.d/ontap.conf
+  - name: gssproxy config
+    copy:
+      content: |
+        [gssproxy]
+        debug = true
+      dest: /etc/gssproxy/00-gssproxy.conf
   - name: nfs mount
     copy:
       content: |
@@ -59,5 +70,37 @@
         options nfs nfs4_disable_idmapping=N
       dest: /etc/modprobe.d/nfs.conf
     when: no # not explored
+  - name: also configure ssh for kerberos authent
+    copy:
+      content: |
+        include /etc/krb5.conf
 
-  
+        [libdefaults]
+        ignore_acceptor_hostname = true
+      dest: /etc/krb5.ssh.conf
+  - name: ssh configuration for kerberos authent
+    copy:
+      content: |
+        KRB5_CONFIG=/etc/krb5.ssh.conf
+      dest: /etc/sysconfig/sshd
+  - name: Allow gssproxy to connect to our kerberos server on port 10088
+    community.general.seport:
+      ports: 10088
+      proto: "{{ item }}"
+      setype: kerberos_port_t
+      state: present
+    loop:
+    - tcp
+    - udp
+  - name: Configure domain for id mapping. Unfortunately not picked up by idmapd
+    copy:
+      content: |
+        [Resolve]
+        Domains=example.test
+      dest: /etc/systemd/resolved.conf.d/domain.conf
+    when: no
+  - name: Configure domain for id mapping
+    ansible.builtin.lineinfile:
+      path: /etc/idmapd.conf
+      regexp: '#?Domain ?=.*'
+      line: Domain = example.test
