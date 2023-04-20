@@ -53,4 +53,11 @@
         Nfsvers=4.2
         Ac=false
       dest: /etc/nfsmount.conf.d/ontap.conf
+  - name: nfsidmapping
+    copy:
+      content: |
+        options nfs nfs4_disable_idmapping=N
+      dest: /etc/modprobe.d/nfs.conf
+    when: no # not explored
+
   

@@ -129,6 +129,9 @@
       windows:
         map_unknown_uid_to_default_user: false # BUG need to be true once audit activated or unknown users won't be able to access the share anymore
         default_user: tata
+      # nfsv4_numeric_ids: disabled # TODO: not supported by REST but we require it for other parmaters
+      nfsv4_id_domain: example.test
+
       hostname: "{{ netapp_hostname }}"
       username: "{{ netapp_username }}"
       password: "{{ netapp_password }}"
@@ -141,7 +144,7 @@
     netapp.ontap.na_ontap_export_policy_rule:
       name: default
       state: present
-      rule_index: 1
+      rule_index: 10
       vserver: vs
       client_match: 10.224.123.0/24
       ro_rule: none
@@ -541,7 +544,7 @@
     netapp.ontap.na_ontap_export_policy_rule:
       name: default
       state: present
-      rule_index: 2
+      rule_index: 11
       vserver: vs
       client_match: fd00::/56
       ro_rule: none

@@ -131,7 +131,8 @@ podman run --rm --name krb5-server -e KRB5_REALM=EXAMPLE.TEST -e KRB5_KDC=localh
 
 we add some principals:
 ```
-alias ka="KRB5_CONFIG=krb5.conf kadmin -w mypass"
+rm -f raw.keytab gw.keytab
+alias ka="KRB5_CONFIG=krb5.conf kadmin -w mypass -p admin/admin@EXAMPLE.TEST"
 ka add_principal -pw mypass host/raw.example.test@EXAMPLE.TEST
 ka add_principal -pw mypass host/gw.example.test@EXAMPLE.TEST
 ka add_principal -pw mypass host/nfs.example.test@EXAMPLE.TEST
@@ -139,7 +140,7 @@ ka add_principal -pw mypass nfs/nfs.example.test@EXAMPLE.TEST
 ka add_principal -pw mypass vagrant@EXAMPLE.TEST
 ka add_principal -pw mypass nfs/service@EXAMPLE.TEST
 ka ktadd -k raw.keytab host/raw.example.test@EXAMPLE.TEST
-ka ktadd -k gw.keytab host/raw.example.test@EXAMPLE.TEST
+ka ktadd -k gw.keytab host/gw.example.test@EXAMPLE.TEST
 ```
 
 we configure Ontap for Kerberos
@@ -164,10 +165,148 @@ more:
 diag nblade nfs kerberos-context-cache show
 ```
 
+# NFSv4 and ids
+
+Not explored
+
+```
+test1::> vserver nfs modify -vserver vs -v4-numeric-ids disabled
+
+test1::> vserver security file-directory show -vserver vs -path /myvol/fff
+
+                Vserver: vs
+              File Path: /myvol/fff
+      File Inode Number: 108
+         Security Style: ntfs
+        Effective Style: ntfs
+         DOS Attributes: 20
+ DOS Attributes in Text: ---A----
+Expanded Dos Attributes: -
+           UNIX User Id: 1000
+          UNIX Group Id: 1000
+         UNIX Mode Bits: 777
+ UNIX Mode Bits in Text: rwxrwxrwx
+                   ACLs: NTFS Security Descriptor
+                         Control:0x8004
+                         Owner:TEST1\tata
+                         Group:TEST1\None
+                         DACL - ACEs
+                           ALLOW-Everyone-0x1f01ff-(Inherited)
+```
+
+# trident
+
+[gh](https://github.com/NetApp/trident)
+
+[dockerhub](https://hub.docker.com/r/netapp/trident-operator/tags)
+
+[manual deployment](https://docs.netapp.com/us-en/trident/trident-get-started/kubernetes-deploy-operator.html#critical-information-about-astra-trident-23-01)
+check for a release where image version exists.
+
+in Kind:
+
+```
+curl -L https://raw.githubusercontent.com/NetApp/trident/master/deploy/namespace.yaml | kubectl apply -f -
+curl -L https://raw.githubusercontent.com/NetApp/trident/stable/v23.01/deploy/bundle_post_1_25.yaml | kubectl apply -f -
+curl -L https://raw.githubusercontent.com/NetApp/trident/v23.01.1/deploy/crds/tridentorchestrator_cr.yaml | kubectl apply -f -
+```
+
+there is a ```tridentctl``` utility in the release.
+```
+[vagrant@raw ~]$ kubectl get pod -n trident 
+NAME                                  READY   STATUS    RESTARTS   AGE
+trident-controller-77f66f4848-pthhh   6/6     Running   0          4m41s
+trident-node-linux-7xqc9              2/2     Running   0          4m41s
+trident-node-linux-8g527              2/2     Running   0          4m41s
+trident-node-linux-8hmml              2/2     Running   0          4m41s
+trident-operator-86696fb84f-dzf7b     1/1     Running   0          18m
+[vagrant@raw ~]$ trident-installer/tridentctl -n trident version
++----------------+----------------+
+| SERVER VERSION | CLIENT VERSION |
++----------------+----------------+
+| 23.01.1        | 23.01.1        |
++----------------+----------------+
+```
+
+Creating backend as per [sample](https://github.com/NetApp/trident/blob/v23.01.1/trident-installer/sample-input/backends-samples/ontap-nas/backend-ontap-nas.json)
+storage class, pvc, pod as [documented](https://docs.netapp.com/us-en/trident/trident-get-started/kubernetes-postdeployment.html#step-4-mount-the-volumes-in-a-pod)
+
+```
+test1::> volume show -vserver vs -volume trident_pvc_a81edc1f_3c77_4714_9de7_9841ed1bc5c7
+                                                                                                                  
+                                      Vserver Name: vs                         
+                                       Volume Name: trident_pvc_a81edc1f_3c77_4714_9de7_9841ed1bc5c7
+                                    Aggregate Name: aggr1
+     List of Aggregates for FlexGroup Constituents: aggr1
+                                   Encryption Type: none 
+                  List of Nodes Hosting the Volume: test1-01
+                                       Volume Size: 60MB
+                                Volume Data Set ID: 1027
+                         Volume Master Data Set ID: 2159746539
+                                      Volume State: online  
+                                      Volume Style: flex     
+                             Extended Volume Style: flexvol
+                           FlexCache Endpoint Type: none
+                            Is Cluster-Mode Volume: true
+                             Is Constituent Volume: false
+                     Number of Constituent Volumes: -  
+                                     Export Policy: default
+                                           User ID: 0
+                                          Group ID: 0    
+                                    Security Style: unix 
+                                  UNIX Permissions: ---rwxrwxrwx
+                                     Junction Path: /trident_pvc_a81edc1f_3c77_4714_9de7_9841ed1bc5c7
+                              Junction Path Source: RW_volume
+                                   Junction Active: true 
+```
+from within the node
+```
+root@ovn-worker:/# mount | grep nfs
+10.224.123.7:/trident_pvc_a81edc1f_3c77_4714_9de7_9841ed1bc5c7 on /var/lib/kubelet/pods/c8558149-3720-4726-ba94-cd4c6c5e121c/volumes/kubernetes.io~csi/pvc-a81edc1f-3c77-4714-9de7-9841ed1bc5c7/mount type nfs4 (rw,relatime,vers=4.2,rsize=65536,wsize=65536,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=null,clientaddr=10.89.0.4,local_lock=none,addr=10.224.123.7)
+```
+
+volume can be customized with [annotations](https://netapp-trident.readthedocs.io/en/stable-v21.07/kubernetes/concepts/objects.html?highlight=trident.netapp.io%2FunixPermissions#kubernetes-persistentvolumeclaim-objects)
+
+I don't see how to encrypt traffic.
+Also, krb5p [not supported](https://access.redhat.com/solutions/6132061) in OpenShift
+
+Importing out existing volume from above
+```
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: imported
+  namespace: frigo
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: imported
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: imported
+provisioner: csi.trident.netapp.io
+parameters:
+  backendType: "ontap-nas"
+reclaimPolicy: Retain
+```
+
+```
+[vagrant@raw ~]$ trident-installer/tridentctl  import volume customBackendName vol1 -f pvcimport.yaml --no-manage -n trident
++------------------------------------------+--------+---------------+----------+--------------------------------------+--------+---------+
+|                   NAME                   |  SIZE  | STORAGE CLASS | PROTOCOL |             BACKEND UUID             | STATE  | MANAGED |
++------------------------------------------+--------+---------------+----------+--------------------------------------+--------+---------+
+| pvc-d1d404f9-d79e-4ea2-bbc4-93577ddb087c | 40 MiB | imported      | file     | 033c9716-cd8a-4158-9123-0d993623f616 | online | false   |
++------------------------------------------+--------+---------------+----------+--------------------------------------+--------+---------+
+```
+
+
 # links
 
 [kerberos](https://www.netapp.com/media/19384-tr-4616.pdf)
 
 [REST API](https://docs.netapp.com/us-en/ontap-automation/reference/api_reference.html#access-a-copy-of-the-ontap-rest-api-reference-documentation)
 
-
+[NFS best practice](https://www.netapp.com/media/10720-tr-4067.pdf)
