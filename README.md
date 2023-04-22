@@ -174,9 +174,16 @@ KRB5_CONFIG=krb5.conf ssh -K -o PreferredAuthentications=gssapi-with-mic vagrant
 
 We use [gssproxy](https://github.com/gssapi/gssproxy/blob/main/docs/NFS.md)
 
+```
+kerberos-context-cache clear-all
+```
+
+About gssproxy:
+- https://bugzilla.redhat.com/show_bug.cgi?id=2188797
+- https://github.com/gssapi/gssproxy/issues/75
+
 # NFSv4 and ids
 
-Not really explored
 
 ```
 test1::> vserver nfs modify -vserver vs -v4-numeric-ids disabled
@@ -201,6 +208,17 @@ Expanded Dos Attributes: -
                          Group:TEST1\None
                          DACL - ACEs
                            ALLOW-Everyone-0x1f01ff-(Inherited)
+```
+
+This works in ```/etc/idmapd.conf```
+
+```
+[Static]
+
+vagrant@EXAMPLE.TEST = mylocaluser
+
+[Translation]
+Method = static
 ```
 
 # trident

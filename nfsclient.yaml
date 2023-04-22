@@ -26,8 +26,12 @@
         example.test = EXAMPLE.TEST
 
         [libdefaults]
-        # I could not find a way to remove that reliably
-        default_realm = EXAMPLE.TEST
+        # ensure the cache are put in a good place, already 
+        # in good shape on fedora (which uses KCM). 
+        # Something like /home/%{username} is invalid as it does not work for root.
+        # includedir /etc/krb5.conf.d/ is required in krb5.conf for this to work.
+        #
+        # default_ccache_name = KEYRING:persistent:%{uid}.
       dest: /etc/krb5.conf.d/ontap.conf
   - name: krb keytab
     copy:
@@ -47,15 +51,17 @@
         [gssd]
         use-gss-proxy=1
         use-machine-creds=0
-        verbosity=4
-        rpc-verbosity=4
+        # verbosity=4
+        # rpc-verbosity=4
       dest: /etc/nfs.conf.d/ontap.conf
   - name: gssproxy config
     copy:
       content: |
         [gssproxy]
-        debug = true
-      dest: /etc/gssproxy/00-gssproxy.conf
+        # debug = true
+        # debug_level = 3
+        # would need a conf for service/network-fs-clients as on Fedora
+      dest: /etc/gssproxy/gssproxy.conf
   - name: nfs mount
     copy:
       content: |
@@ -91,14 +97,7 @@
       state: present
     loop:
     - tcp
-    - udp
-  - name: Configure domain for id mapping. Unfortunately not picked up by idmapd
-    copy:
-      content: |
-        [Resolve]
-        Domains=example.test
-      dest: /etc/systemd/resolved.conf.d/domain.conf
-    when: no
+    - udp  
   - name: Configure domain for id mapping
     ansible.builtin.lineinfile:
       path: /etc/idmapd.conf
