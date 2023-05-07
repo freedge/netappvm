@@ -11,7 +11,8 @@
       state: present
       rule_index: 1
       vserver: vs
-      client_match: ".EXAMPLE.TEST"
+      #client_match: ".EXAMPLE.TEST"
+      client_match: "10.224.123.0/24"
       ro_rule: krb5p
       rw_rule: krb5p
       protocol: nfs4
@@ -54,6 +55,22 @@
       group_id: 888
       id: 888
       full_name: host
+      hostname: "{{ netapp_hostname }}"
+      username: "{{ netapp_username }}"
+      password: "{{ netapp_password }}"
+      use_rest: always
+      https: true
+      validate_certs: false
+    delegate_to: localhost
+
+  - name: enable Kerberos interface
+    netapp.ontap.na_ontap_kerberos_interface:
+      interface_name: lif1.0
+      vserver: vs
+      enabled: true
+      service_principal_name: nfs/nfs.example.test@EXAMPLE.TEST
+      admin_username: nfs/service
+      admin_password: "{{ krb_admin_password }}"
       hostname: "{{ netapp_hostname }}"
       username: "{{ netapp_username }}"
       password: "{{ netapp_password }}"

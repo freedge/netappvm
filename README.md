@@ -56,7 +56,8 @@ mount 10.224.123.7:/myvol /mnt/nfs/ -t nfs -o sec=sys,nfsvers=3,noac,noexec,node
 
 - S3 service 
 
-NAS buckets are not doable with Ansible: https://github.com/ansible-collections/netapp.ontap/issues/153
+- [ ] TODO NAS buckets are not doable with Ansible: https://github.com/ansible-collections/netapp.ontap/issues/153
+
 ```
 vserver object-store-server bucket create -type nas -vserver vs -bucket mybucket -nas-path /myvol
 vserver name-mapping create -position 1 -direction s3-unix -vserver vs -pattern user -replacement me
@@ -149,7 +150,7 @@ we configure Ontap for Kerberos
 ansible-playbook  krb5.yaml  -e ansible_python_interpreter=`pwd`/myenv/bin/python
 ```
 
-TODO: following line doable with Ansible?
+following line is now done with Ansible (netapp.ontap 22.6.0)
 
 ```
 vserver nfs kerberos interface modify -vserver vs -lif lif1.0 -kerberos enabled -spn nfs/nfs.example.test@EXAMPLE.TEST -admin-username nfs/service
@@ -331,7 +332,8 @@ reclaimPolicy: Retain
 
 to use krb5p, we need to add config for krb5.conf and nfs.conf, add the keytab on the host.
 
-TODO: some kind of machine config or controller for that?
+- [ ] TODO: some kind of machine config or controller for that?
+
 ```
 sudo podman cp /etc/krb5.keytab ovn-worker:/etc/krb5.keytab
 sudo podman exec -ti ovn-worker mkdir /etc/krb5.conf.d/
@@ -362,6 +364,42 @@ we use keytab for uid=1000, run as user 100000, and files appear owned by 1000
 which is great and weird.
 
 ```chgrp``` works assuming the group name is defined on both client and server side.
+
+# more gssproxy
+
+```
+gssproxy -u -d -i -s /var/run/user/1000/user.socket
+```
+
+```
+podman run --privileged \
+  -v /var/run/user/1000/user.socket:/srv/user.socket \
+  -e GSSPROXY_SOCKET=/srv/user.socket \
+  -e GSS_USE_PROXY=yes \
+  --rm -ti  --network=host ssh bash
+
+ssh -K -o PreferredAuthentications=gssapi-with-mic vagrant@raw.example.test -vvv
+```
+
+to get rid of the ```--privileged```, we can generate a policy with Udica and augment it with
+```
+(block my_gssed
+    (blockinherit container)
+
+    (allow process ssh_port_t (tcp_socket (name_connect)))
+    (allow process userdomain (unix_stream_socket (connectto)))
+)
+```
+
+```
+chcon system_u:object_r:container_file_t:s0:c42,c43 /var/run/user/1000/user.socket
+
+podman run \
+  --security-opt label=type:my_gssed.process \
+  --security-opt label=level:s0:c42,c43 \
+  -v /var/run/user/1000/user.socket:/srv/user.socket \
+  ...
+```
 
 # links
 
