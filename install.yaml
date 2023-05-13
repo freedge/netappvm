@@ -336,7 +336,7 @@
   - name: create a supplemental UNIX group for that user
     netapp.ontap.na_ontap_unix_group:
       state: present
-      name: vagrant
+      name: lecustom
       vserver: vs
       id: 5555
       users:
@@ -361,6 +361,7 @@
       https: true
       validate_certs: false
       use_rest: always
+      type: nas
     delegate_to: localhost
     when: no # need nas-path
 

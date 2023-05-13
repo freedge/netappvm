@@ -401,6 +401,21 @@ podman run \
   ...
 ```
 
+# CIFS
+
+```
+smbclient --use-kerberos=off -d 2 -W WORKGROUP1 -n TEST1 -U tata '\\10.224.123.7\myshare'
+
+mount -t cifs //10.224.123.7/myshare /mnt/nfs2 -o workgroup=workgroup1,credentials=/etc/samba/samba.user,seal,vers=3,uid=1000,gid=1000
+```
+
+samba.user file looks like
+```
+username=tata
+password=..
+domain=WORKGROUP1
+```
+
 # links
 
 [kerberos](https://www.netapp.com/media/19384-tr-4616.pdf)
