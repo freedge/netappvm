@@ -56,7 +56,7 @@ mount 10.224.123.7:/myvol /mnt/nfs/ -t nfs -o sec=sys,nfsvers=3,noac,noexec,node
 
 - S3 service 
 
-- [ ] TODO NAS buckets are not doable with Ansible: https://github.com/ansible-collections/netapp.ontap/issues/153
+- [x] NAS buckets are not doable with Ansible: https://github.com/ansible-collections/netapp.ontap/issues/153
 
 ```
 vserver object-store-server bucket create -type nas -vserver vs -bucket mybucket -nas-path /myvol
@@ -71,6 +71,11 @@ curl --cacert ca_cert.pem --resolve s3.example.test:443:10.224.123.8 https://s3.
 presigned URL require signature V4 (https://community.netapp.com/t5/ONTAP-Discussions/S3-buckets-and-presigned-URLs/m-p/443294#M42029)
 ETAG do not match the file MD5 and If-Modified-Since is not supported. Connection will be resetted if file content changes.
 Symlink or path to .snapshot are supported.
+
+```
+source user.env
+aws s3 --endpoint-url=https://s3.example.test/ ls s3://myvol/
+```
 
 
 

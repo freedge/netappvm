@@ -362,8 +362,8 @@
       validate_certs: false
       use_rest: always
       type: nas
+      nas_path: /myvol
     delegate_to: localhost
-    when: no # need nas-path
 
   - name: user for S3 bucket
     na_ontap_s3_users:
@@ -421,7 +421,6 @@
       https: true
       validate_certs: false
     delegate_to: localhost
-    when: no
   - name: name mapping
     netapp.ontap.na_ontap_name_mappings:
       direction: s3_unix
@@ -437,7 +436,6 @@
       https: true
       validate_certs: false
     delegate_to: localhost
-    when: no # not supported by ansible https://github.com/ansible-collections/netapp.ontap/issues/153
 
   - name: cifs share
     netapp.ontap.na_ontap_cifs:
