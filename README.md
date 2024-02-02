@@ -9,9 +9,9 @@ openssl req -new -newkey rsa:4096 -sha256 -nodes \
   -keyout example.key -out example.csr -subj "/CN=test1" \
   -reqexts SAN \
   -config <(cat /etc/ssl/openssl.cnf \
-        <(printf "\n[SAN]\nsubjectAltName=DNS:s3,DNS:s3.example.test,DNS:test1,DNS:test1.example.test")) 
+        <(printf "\n[SAN]\nsubjectAltName=DNS:s3.example.test,DNS:localhost,DNS:test1.example.test"))
 
-openssl x509 -extfile <(printf "subjectAltName=DNS:s3,DNS:s3.example.test,DNS:test1,DNS:test1.example.test") -req -in example.csr -days 365 -CA ca_cert.pem -CAkey ca_private_key.pem -CAcreateserial -out my_signed_cert.pem
+openssl x509 -extfile <(printf "subjectAltName=DNS:s3.example.test,DNS:test1.example.test,DNS:localhost") -req -in example.csr -days 365 -CA ca_cert.pem -CAkey ca_private_key.pem -CAcreateserial -out my_signed_cert.pem
 ```
 
 with TPM: key needs to be shorter
@@ -24,10 +24,22 @@ openssl req -new -newkey rsa:2048 -sha256 -nodes \
   -keyout example.key -out example.csr -subj "/CN=test1" \
   -reqexts SAN \
   -config <(cat /etc/ssl/openssl.cnf \
-        <(printf "\n[SAN]\nsubjectAltName=DNS:s3,DNS:s3.example.test,DNS:test1,DNS:test1.example.test")) 
+        <(printf "\n[SAN]\nsubjectAltName=DNS:s3.example.test,DNS:test1.example.test")) 
 
-openssl x509 -extfile <(printf "subjectAltName=DNS:s3,DNS:s3.example.test,DNS:test1,DNS:test1.example.test") -req -in example.csr -days 365 -CA ca_cert.pem -CAkey ca_private_key.pem -CAcreateserial -out my_signed_cert.pem
+openssl x509 -extfile <(printf "subjectAltName=DNS:s3.example.test,DNS:test1.example.test") -req -in example.csr -days 365 -CA ca_cert.pem -CAkey ca_private_key.pem -CAcreateserial -out my_signed_cert.pem
 
+```
+
+with name constraint:
+```
+openssl genrsa -out ca_private_key.pem 4096 && openssl req -new -key ca_private_key.pem -extensions v3_ca -batch -out ca.csr -utf8 -subj '/CN=testca'
+openssl x509 -req -sha256 -days 3650 -in ca.csr -signkey ca_private_key.pem -extfile <(cat << EOF
+basicConstraints = critical, CA:TRUE
+keyUsage = critical, keyCertSign, cRLSign
+subjectKeyIdentifier = hash
+nameConstraints = critical, permitted;DNS:.example.test, permitted;DNS:localhost
+EOF
+) -out ca_cert.pem
 ```
 
 - also need a host_vars/nasim01a.yaml file with a ```licenses``` list and a ```netapp_password``` string
