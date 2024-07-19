@@ -3,9 +3,9 @@ random notes to build a lab with Netapp Ontap
 we forget about active directory, but can have NFS, CIFS, S3 working.
 - we will need a SSL cert for S3
 ```
-openssl req -x509 -days 3650 -newkey rsa:4096 -keyout ca_private_key.pem -out ca_cert.pem -nodes -subj "/CN=testca"
+openssl req -x509 -days 3650 -newkey ec:<(openssl ecparam -name brainpoolP256r1) -keyout ca_private_key.pem -out ca_cert.pem -nodes -subj "/CN=testca"
 
-openssl req -new -newkey rsa:4096 -sha256 -nodes \
+openssl req -new -newkey ec:<(openssl ecparam -name prime256v1) -sha256 -nodes \
   -keyout example.key -out example.csr -subj "/CN=test1" \
   -reqexts SAN \
   -config <(cat /etc/ssl/openssl.cnf \
