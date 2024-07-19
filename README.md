@@ -30,6 +30,20 @@ openssl x509 -extfile <(printf "subjectAltName=DNS:s3.example.test,DNS:test1.exa
 
 ```
 
+with TPM: but on Fedora, and with ecc
+```
+dnf install tpm2-openssl
+openssl ecparam -provider tpm2 -propquery provider=tpm2 -name prime256v1 -genkey -noout -out ca_private_key.pem
+openssl req -provider tpm2 -provider default -x509 -days 3650 -key ca_private_key.pem -out ca_cert.pem -nodes -subj "/CN=testca"
+openssl req -new -newkey ec:<(openssl ecparam -name secp384r1) -sha256 -nodes \
+  -keyout example.key -out example.csr -subj "/CN=test1" \
+  -reqexts SAN \
+  -config <(cat /etc/ssl/openssl.cnf \
+        <(printf "\n[SAN]\nsubjectAltName=DNS:s3.example.test,DNS:test1.example.test"))
+openssl x509 -provider tpm2 -extfile <(printf "subjectAltName=DNS:s3.example.test,DNS:test1.example.test") -req -in example.csr -days 365 -CA ca_cert.pem -CAkey ca_private_key.pem -CAcreateserial -out my_signed_cert.pem
+
+```
+
 with name constraint:
 ```
 openssl genrsa -out ca_private_key.pem 4096 && openssl req -new -key ca_private_key.pem -extensions v3_ca -batch -out ca.csr -utf8 -subj '/CN=testca'
